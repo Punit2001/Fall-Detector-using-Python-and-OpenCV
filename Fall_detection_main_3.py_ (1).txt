@@ -1,0 +1,70 @@
+import cv2
+import time
+
+debug = True
+minArea = 100 * 100
+lastH = [0] * 100
+lastW = [0] * 100
+start = time.time()
+i = 0
+detectStatus = "Ok"
+
+fittoEllipse = False
+cap = cv2.VideoCapture(0) # "f.mp4")
+time.sleep(4)
+
+fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+j = 0
+
+while(1):
+    rer, frame = cap.read()
+    fgmask = fgbg.apply(frame)
+    thresh = cv2.dilate(fgmask, None, iterations=10)  # dilate thresh
+
+    _, contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+
+
+    for contour in contours:
+        if cv2.contourArea(contour) < minArea:
+            continue
+
+        # Drawing rect over contour
+        (x, y, w, h) = cv2.boundingRect(contour)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        if w > lastW[i] * 1.40:
+            print("Alarm: " + format(time.time()))
+        #   if lastH < h*1.20:
+        #     print "Alarm!"
+        lastW[i] = w
+        lastH[i] = h
+        #   cv2.putText(frame, "{}".format(cv2.contourArea(contour)), (x, y+h+20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 1)
+        cv2.putText(frame, "{}".format(i), (x, y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 140, 255), 1)
+        detectStatus = "Ok"
+        i += 1
+    # Hud + fps
+    if debug:
+        end = time.time()
+        seconds = end - start
+        fps = round((1 / seconds), 1)
+        start = time.time()
+
+        cv2.putText(frame, "Detect: {}".format(detectStatus), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 140, 255), 1)
+        cv2.putText(frame, "FPS: {}".format(fps), (400, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 140, 255), 1)
+        cv2.imshow("fgmask", fgmask)
+        cv2.imshow("Thresh", thresh)
+        # cv2.imshow("firstFrame", firstFrame)
+
+    cv2.imshow("Feed", frame)
+
+    i = 0
+
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord("q"):
+        break
+    if key == ord("n"):
+        firstFrame = None
+
+# Release and destroy
+cap.release()
+cv2.destroyAllWindows()
